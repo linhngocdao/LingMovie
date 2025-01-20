@@ -1,74 +1,49 @@
 import axios, { AxiosError } from 'axios';
-import { Movie } from '../models/Movie';
+import { MovieModel, IMovie } from '../models/Movie';
 
 class MovieService {
   private readonly baseURL = 'https://ophim1.com';
-  private readonly cache: Map<string, { data: Movie[], timestamp: number }> = new Map();
-  private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 phút
-  private tempCache: Movie[] | null = null; // Cache tạm thời khi đang crawl
-  private isCrawling = false; // Flag để kiểm tra trạng thái crawl
+  private isCrawling = false;
 
-  private getCachedData(): Movie[] | null {
-    const cachedData = this.cache.get('movies');
-
-    // Nếu có cache, luôn trả về cache cũ trước
-    if (cachedData) {
-      // Kiểm tra thời gian cache
-      if (Date.now() - cachedData.timestamp < this.CACHE_DURATION) {
-        return cachedData.data;
-      }
-      // Nếu cache hết hạn, vẫn giữ lại data cũ
-      return cachedData.data;
+  // Lấy movies từ DB
+  async getMovies(): Promise<IMovie[]> {
+    try {
+      return await MovieModel.find().lean();
+    } catch (error) {
+      console.error('❌ Lỗi khi lấy dữ liệu từ DB:', error);
+      throw error;
     }
-    return null;
   }
 
-  // Method để cập nhật cache chính
-  private updateMainCache(movies: Movie[]): void {
-    this.cache.set('movies', {
-      data: movies,
-      timestamp: Date.now()
-    });
-    this.tempCache = null;
-    this.isCrawling = false;
-  }
+  // Lưu movies vào DB
+  private async saveMoviesToDB(movies: any[]): Promise<void> {
+    try {
+      const operations = movies.map(movie => ({
+        updateOne: {
+          filter: { slug: movie.slug },
+          update: { $set: movie },
+          upsert: true
+        }
+      }));
 
-  // Thêm method để xóa cache
-  public clearCache(): void {
-    this.cache.clear();
-    console.log('Cache cleared at:', new Date().toISOString());
-  }
-
-  async crawlMovies(isCronJob = false): Promise<Movie[]> {
-    // Lấy cache hiện tại
-    const cachedData = this.getCachedData();
-
-    // Nếu không phải cron job và có cache, trả về cache
-    if (!isCronJob && cachedData) {
-      // Kiểm tra xem cache có cần refresh không
-      const cacheTime = this.cache.get('movies')?.timestamp || 0;
-      if (Date.now() - cacheTime >= this.CACHE_DURATION) {
-        // Trigger crawl mới trong background
-        this.crawlMoviesInBackground();
-      }
-      return cachedData;
+      await MovieModel.bulkWrite(operations);
+      console.log(`✅ Đã lưu ${movies.length} phim vào database`);
+    } catch (error) {
+      console.error('❌ Lỗi khi lưu phim vào database:', error);
+      throw error;
     }
+  }
 
-    // Nếu đang crawl, trả về temp cache hoặc cache cũ
+  // Crawl và lưu vào DB
+  async crawlMovies(): Promise<void> {
     if (this.isCrawling) {
-      return this.tempCache || this.cache.get('movies')?.data || [];
+      console.log('Đang trong quá trình crawl...');
+      return;
     }
 
     try {
       this.isCrawling = true;
-
-      // Lưu cache hiện tại vào temp cache
-      const currentCache = this.cache.get('movies');
-      if (currentCache) {
-        this.tempCache = currentCache.data;
-      }
-
-      const movies: Movie[] = [];
+      const movies: any[] = [];
       let currentPage = 1;
       let hasNextPage = true;
       let retryCount = 0;
@@ -81,7 +56,7 @@ class MovieService {
             timeout: 5000
           });
 
-          if (!response.data || !response.data.items || !response.data.pagination) {
+          if (!response.data?.items || !response.data?.pagination) {
             throw new Error('Invalid response data structure');
           }
 
@@ -89,7 +64,6 @@ class MovieService {
           movies.push(...items);
           hasNextPage = currentPage < pagination.totalPages;
           currentPage++;
-
           console.log(`Crawled page ${currentPage-1}/${pagination.totalPages}`);
         } catch (error) {
           if (retryCount < maxRetries) {
@@ -102,45 +76,33 @@ class MovieService {
         }
       }
 
-      // Cập nhật cache chính với dữ liệu mới
-      this.updateMainCache(movies);
-      return movies;
-
+      await this.saveMoviesToDB(movies);
     } catch (error) {
-      this.isCrawling = false;
-      // Nếu có lỗi, giữ lại cache cũ
-      if (this.tempCache) {
-        this.cache.set('movies', {
-          data: this.tempCache,
-          timestamp: Date.now()
-        });
-      }
-
       const errorMessage = error instanceof AxiosError
         ? `Failed to crawl movies: ${error.message} (${error.code})`
         : 'Failed to crawl movies';
       console.error(errorMessage);
-
-      // Trả về temp cache nếu có lỗi
-      return this.tempCache || [];
+      throw error;
+    } finally {
+      this.isCrawling = false;
     }
   }
 
-  private async crawlMoviesInBackground(): Promise<void> {
+  // Lấy chi tiết phim từ DB hoặc crawl mới
+  async getMovieDetail(slug: string): Promise<IMovie | null> {
     try {
-      const movies = await this.crawlMovies(true);
-      this.updateMainCache(movies);
-    } catch (error) {
-      console.error('Background crawl failed:', error);
-    }
-  }
+      let movie = await MovieModel.findOne({ slug }).lean();
 
-  async getMovieDetail(slug: string): Promise<Movie> {
-    try {
-      const response = await axios.get(`${this.baseURL}/phim/${slug}`);
-      return response.data.movie;
+      if (!movie) {
+        const response = await axios.get(`${this.baseURL}/phim/${slug}`);
+        movie = response.data.movie;
+        await MovieModel.create(movie);
+      }
+
+      return movie;
     } catch (error) {
-      throw new Error('Failed to get movie detail');
+      console.error('❌ Lỗi khi lấy chi tiết phim:', error);
+      throw error;
     }
   }
 }

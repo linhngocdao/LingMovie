@@ -13,7 +13,7 @@ class MovieController {
   public async getMovies(req: Request, res: Response) {
     try {
       const { page = 1, limit = 24 } = req.query;
-      const movies = await movieService.crawlMovies();
+      const movies = await movieService.getMovies();
 
       const startIndex = (Number(page) - 1) * Number(limit);
       const endIndex = startIndex + Number(limit);
@@ -66,34 +66,34 @@ class MovieController {
       } = req.query;
 
       const movies = await movieService.crawlMovies();
-      let filteredMovies = movies;
+      let filteredMovies : any = movies;
 
       if (search && typeof search === 'string') {
         const searchTerm = search.toLowerCase();
-        filteredMovies = filteredMovies.filter(movie =>
+        filteredMovies = filteredMovies.filter((movie: any) =>
           movie.name.toLowerCase().includes(searchTerm) ||
           movie.origin_name.toLowerCase().includes(searchTerm)
         );
       }
 
       if (year && !isNaN(Number(year))) {
-        filteredMovies = filteredMovies.filter(movie => movie.year === Number(year));
+        filteredMovies = filteredMovies.filter((movie: any) => movie.year === Number(year));
       }
 
       if (category && typeof category === 'string') {
-        filteredMovies = filteredMovies.filter(movie =>
-          movie.category?.some(cat => cat.slug === category)
+        filteredMovies = filteredMovies.filter((movie: any) =>
+          movie.category?.some((cat: any) => cat.slug === category)
         );
       }
 
       if (country && typeof country === 'string') {
-        filteredMovies = filteredMovies.filter(movie =>
-          movie.country?.some(c => c.slug === country)
+        filteredMovies = filteredMovies.filter((movie: any) =>
+          movie.country?.some((c: any) => c.slug === country)
         );
       }
 
       if (type && typeof type === 'string') {
-        filteredMovies = filteredMovies.filter(movie => movie.type === type);
+        filteredMovies = filteredMovies.filter((movie: any) => movie.type === type);
       }
 
       const startIndex = (Number(page) - 1) * Number(limit);
