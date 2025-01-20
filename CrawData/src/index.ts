@@ -1,9 +1,9 @@
 import dotenv from 'dotenv';
 import express, { Express } from 'express';
 import movieRoutes from './routes/movieRoutes';
+import './cron/movieCrawlerJob'; // Import để khởi động cron job
 
 dotenv.config();
-
 
 const app: Express = express();
 const port = process.env.PORT || 3000;
