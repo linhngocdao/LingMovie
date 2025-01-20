@@ -12,8 +12,8 @@ class MovieController {
   // Get all movies
   public async getMovies(req: Request, res: Response) {
     try {
-      const { page = 1, limit = 24 } = req.query;
-      const movies = await movieService.getMovies();
+      const { page = 1, limit = 24, name = '' } = req.query;
+      const movies = await movieService.getMovies(name as string);
 
       const startIndex = (Number(page) - 1) * Number(limit);
       const endIndex = startIndex + Number(limit);

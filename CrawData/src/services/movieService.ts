@@ -6,9 +6,9 @@ class MovieService {
   private isCrawling = false;
 
   // Lấy movies từ DB
-  async getMovies(): Promise<IMovie[]> {
+  async getMovies(name: string): Promise<IMovie[]> {
     try {
-      return await MovieModel.find().lean();
+      return await MovieModel.find({'name': {'$regex': name}}).lean();
     } catch (error) {
       console.error('❌ Lỗi khi lấy dữ liệu từ DB:', error);
       throw error;
