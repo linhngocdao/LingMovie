@@ -5,6 +5,7 @@ import connectDatabase from './config/database';
 import { corsMiddleware } from './middleware/cors';
 import cors from 'cors';
 import morgan from 'morgan';
+import movieDetailCrawlerJob from './cronJob/movieDetailCrawlerJob';
 
 dotenv.config();
 
@@ -33,6 +34,7 @@ const port = process.env.PORT || 3000;
 app.listen(port, async () => {
 	console.log('\x1b[30;1;42m Info \x1b[0m', 'Local:', `\x1b[96m http://localhost:${port} \x1b[0m `);
 	await connectDatabase();
+	movieDetailCrawlerJob.initJob();
 });
 
 export default app;

@@ -1,5 +1,8 @@
 import { Request, Response } from 'express';
 import * as movieService from '../services/movieService';
+import { filterMovies } from '../services/movieService';
+import { logger } from '../utils/logger';
+import { createErrorResponse } from '../utils/response';
 
 interface FilterOptions {
   year?: number;
@@ -51,53 +54,45 @@ export const getMovies = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-export const filterMovies = async (req: Request, res: Response): Promise<void> => {
+export const filterMoviesHandler = async (req: Request, res: Response): Promise<void> => {
   try {
-    const {
-      search,
-      year,
-      category,
-      country,
-      type,
-      page = 1,
-      limit = 24
-    } = req.query;
+    const options = {
+      search: req.query.search as string,
+      year: req.query.year ? Number(req.query.year) : undefined,
+      category: req.query.category as string,
+      country: req.query.country as string,
+      type: req.query.type as string,
+      page: Number(req.query.page) || 1,
+      limit: Number(req.query.limit) || 24
+    };
 
-    const { movies, total } = await movieService.filterMovies({
-      search: search as string,
-      year: year ? Number(year) : undefined,
-      category: category as string,
-      country: country as string,
-      type: type as string,
-      page: Number(page),
-      limit: Number(limit)
-    });
+    logger.debug('Filtering movies with options', options);
 
-    res.status(200).json(createPaginatedResponse(movies, total, Number(page), Number(limit)));
+    const { movies, total } = await filterMovies(options);
+
+    res.json(createPaginatedResponse(movies, total, options.page, options.limit));
   } catch (error) {
-    res.status(500).json(handleError(error));
+    logger.error('Controller error while filtering movies', error);
+    res.status(500).json(createErrorResponse('Lỗi server khi lọc phim'));
   }
 };
 
 export const getMovieDetail = async (req: Request, res: Response): Promise<void> => {
   try {
     const { slug } = req.params;
-    const movie = await movieService.getMovieDetail(slug);
+    const result = await movieService.getMovieDetail(slug);
 
-    if (!movie) {
-      res.status(404).json({
-        status: false,
-        message: 'Movie not found'
-      });
-      return;
-    }
+    // Trả về kết quả với status code phù hợp
+    res.status(result.status ? 200 : 404).json(result);
 
-    res.status(200).json({
-      status: true,
-      movie
-    });
   } catch (error) {
-    res.status(500).json(handleError(error));
+    console.error('Error:', error);
+    res.status(500).json({
+      status: false,
+      msg: 'Lỗi server',
+      movie: null,
+      episodes: []
+    });
   }
 };
 

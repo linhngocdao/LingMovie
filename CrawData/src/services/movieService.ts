@@ -1,8 +1,63 @@
 import axios, { AxiosError } from 'axios';
 import { MovieModel, IMovie } from '../models/Movie';
+import { MovieDetailModel, IMovieDetail } from '../models/MovieDetail';
+import { cacheManager } from '../utils/cache';
+import { logger } from '../utils/logger';
+import { isValidNumber, sanitizeString, validatePaginationParams } from '../utils/validation';
 
 const baseURL = 'https://ophim1.com';
 let isCrawling = false;
+
+interface FilterOptions {
+  search?: string;
+  year?: number;
+  category?: string;
+  country?: string;
+  type?: string;
+  page: number;
+  limit: number;
+}
+
+// Xây dựng query tìm kiếm
+const buildSearchQuery = (search?: string): object => {
+  if (!search?.trim()) return {};
+
+  const searchRegex = new RegExp(search.trim(), 'i');
+  return {
+    $or: [
+      { name: searchRegex },
+      { origin_name: searchRegex }
+    ]
+  };
+};
+
+// Xây dựng query lọc
+const buildFilterQuery = (options: FilterOptions): object => {
+  const query: any = {};
+
+  if (options.year && Number.isInteger(options.year)) {
+    query.year = options.year;
+  }
+
+  if (options.type?.trim()) {
+    query.type = options.type.trim();
+  }
+
+  if (options.category?.trim()) {
+    query['category.slug'] = options.category.trim();
+  }
+
+  if (options.country?.trim()) {
+    query['country.slug'] = options.country.trim();
+  }
+
+  return query;
+};
+
+// Tạo cache key
+const generateCacheKey = (options: FilterOptions): string => {
+  return `movies:filter:${JSON.stringify(options)}`;
+};
 
 // Lấy danh sách phim với phân trang
 export const getMovies = async (page: number, limit: number): Promise<{ movies: IMovie[], total: number }> => {
@@ -21,53 +76,111 @@ export const getMovies = async (page: number, limit: number): Promise<{ movies: 
   }
 };
 
-// Lọc và tìm kiếm phim
-export const filterMovies = async (options: {
-  search?: string,
-  year?: number,
-  category?: string,
-  country?: string,
-  type?: string,
-  page: number,
-  limit: number
-}): Promise<{ movies: IMovie[], total: number }> => {
+// Hàm filter chính
+export const filterMovies = async (options: FilterOptions): Promise<{
+  movies: IMovie[];
+  total: number;
+}> => {
   try {
-    const { search, year, category, country, type, page, limit } = options;
-    let query: any = {};
+    const cacheKey = generateCacheKey(options);
+    const cachedResult = await cacheManager.get(cacheKey);
 
-    if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { origin_name: { $regex: search, $options: 'i' } }
-      ];
+    if (cachedResult) {
+      logger.debug('Cache hit for movie filter', { cacheKey });
+      return cachedResult;
     }
 
-    if (year) query.year = year;
-    if (type) query.type = type;
-    if (category) query['category.slug'] = category;
-    if (country) query['country.slug'] = country;
+    const { page, limit } = validatePaginationParams(options.page, options.limit);
 
-    const total = await MovieModel.countDocuments(query);
-    const movies = await MovieModel.find(query)
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .lean();
+    const query = {
+      ...buildSearchQuery(sanitizeString(options.search)),
+      ...buildFilterQuery({
+        ...options,
+        year: isValidNumber(options.year) ? Number(options.year) : undefined,
+        category: sanitizeString(options.category),
+        country: sanitizeString(options.country),
+        type: sanitizeString(options.type)
+      })
+    };
 
-    return { movies, total };
+    // Thực hiện query song song
+    const [total, movies] = await Promise.all([
+      MovieModel.countDocuments(query),
+      MovieModel.find(query)
+        .select('name origin_name thumb_url year type slug poster_url status')
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean()
+    ]);
+
+    const result = { movies, total };
+
+    // Cache kết quả trong 5 phút
+    await cacheManager.set(cacheKey, result, 300);
+    logger.debug('Cache set for movie filter', { cacheKey });
+
+    return result;
+
   } catch (error) {
-    console.error('❌ Lỗi khi lọc phim:', error);
+    logger.error('Error filtering movies', error);
     throw error;
   }
 };
 
-// Lấy chi tiết phim
-export const getMovieDetail = async (slug: string): Promise<IMovie | null> => {
+// Lấy chi tiết phim từ bảng MovieDetail
+export const getMovieDetail = async (slug: string): Promise<any> => {
   try {
-    return await MovieModel.findOne({ slug }).lean();
+    // Kiểm tra cache trong DB
+    const cachedDetail = await MovieDetailModel.findOne({ 'movie.slug': slug }).lean();
+
+    if (cachedDetail) {
+      console.log(`✅ Lấy chi tiết phim từ cache: ${slug}`);
+      return {
+        status: true,
+        msg: '',
+        movie: cachedDetail.movie,
+        episodes: cachedDetail.episodes
+      };
+    }
+
+    // Nếu không có trong cache, gọi API
+    console.log(`🔄 Gọi API để lấy chi tiết phim: ${slug}`);
+    const response = await axios.get(`${baseURL}/phim/${slug}`);
+
+    if (!response.data?.movie || !response.data?.episodes) {
+      return {
+        status: false,
+        msg: 'Không tìm thấy thông tin phim',
+        movie: null,
+        episodes: []
+      };
+    }
+
+    // Lưu vào cache
+    await MovieDetailModel.create({
+      movie: response.data.movie,
+      episodes: response.data.episodes
+    });
+
+    console.log(`✅ Đã cache chi tiết phim: ${slug}`);
+
+    // Trả về response giống hệt API gốc
+    return {
+      status: true,
+      msg: '',
+      movie: response.data.movie,
+      episodes: response.data.episodes
+    };
+
   } catch (error) {
-    console.error('❌ Lỗi khi lấy chi tiết phim:', error);
-    throw error;
+    console.error(`❌ Lỗi khi lấy chi tiết phim ${slug}:`, error);
+    return {
+      status: false,
+      msg: 'Có lỗi xảy ra khi lấy thông tin phim',
+      movie: null,
+      episodes: []
+    };
   }
 };
 
@@ -143,3 +256,14 @@ export const crawlMovies = async (): Promise<void> => {
     isCrawling = false;
   }
 };
+
+// Thêm index cho các trường thường xuyên tìm kiếm
+MovieModel.schema.index({ year: 1 });
+MovieModel.schema.index({ type: 1 });
+MovieModel.schema.index({ 'category.slug': 1 });
+MovieModel.schema.index({ 'country.slug': 1 });
+MovieModel.schema.index({ createdAt: -1 });
+MovieModel.schema.index(
+  { name: 'text', origin_name: 'text' },
+  { weights: { name: 2, origin_name: 1 } }
+);
