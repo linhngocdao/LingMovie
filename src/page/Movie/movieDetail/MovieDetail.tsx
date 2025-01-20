@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Play, Film, Download, X } from 'lucide-react';
+import { Film, Phone, Play, X } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 import { LazyLoadImage } from 'react-lazy-load-image-component';
 import 'react-lazy-load-image-component/src/effects/blur.css';
 import { getDetail } from '../../../config/ophim';
@@ -102,6 +102,10 @@ const MovieDetail: React.FC<MovieDetailProps> = ({ slug }) => {
     setSelectedServerIndex(index);
   };
 
+  const ContactAdmin = () => {
+    window.open('https://www.facebook.com/messages/e2ee/t/100052698851470', '_blank');
+  }
+
   return (
     <div className="min-h-screen bg-gray-900 text-white pb-6 sm:pb-10">
       {/* Video Player Modal */}
@@ -164,9 +168,9 @@ const MovieDetail: React.FC<MovieDetailProps> = ({ slug }) => {
                 <Film className="w-4 h-4 sm:w-5 sm:h-5" />
                 <span className="text-sm sm:text-base">Xem Phim</span>
               </button>
-              <button className="flex-1 bg-blue-600 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-lg flex items-center justify-center space-x-1 sm:space-x-2 hover:bg-blue-700 transition-colors">
-                <Download className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="text-sm sm:text-base">Lấy Nguồn</span>
+              <button className="flex-1 bg-blue-600 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-lg flex items-center justify-center space-x-1 sm:space-x-2 hover:bg-blue-700 transition-colors" onClick={ContactAdmin}>
+                <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="text-sm sm:text-base">Liên hệ admin</span>
               </button>
             </div>
           </div>
