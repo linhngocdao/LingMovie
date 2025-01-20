@@ -5,7 +5,7 @@
   "scripts": {
     "start": "node dist/index.js",
     "dev": "nodemon src/index.ts",
-    "build": "chmod +x ./node_modules/.bin/tsc && tsc",
+    "build": "tsc",
     "lint": "eslint . --ext .ts",
     "test": "jest",
     "vercel-build": "npm run build"
