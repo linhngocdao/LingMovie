@@ -21,10 +21,16 @@ app.use(express.json());
 //routes
 app.use('/api/movies', movieRoutes);
 app.get('/', (req, res) => {
-  res.status(200).json({
-    status: true,
-    message: 'Success',
-  });
+  res.status(200).send(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Craw Data</title>
+      </head>
+      <body style="margin: 0; padding: 0; background: white;">
+      </body>
+    </html>
+  `);
 });
 
 
