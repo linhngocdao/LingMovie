@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import MovieController from '../controllers/movieController';
-import MovieCrawlerJob from '../cron/movieCrawlerJob';
+// import MovieCrawlerJob from '../cron/movieCrawlerJob';
 
 const router = Router();
 
@@ -20,19 +20,19 @@ router.get('/:slug', async (req: Request, res: Response) => {
 });
 
 // POST /api/movies/crawl - Trigger crawl job manually
-router.post('/crawl', async (req: Request, res: Response) => {
-  try {
-    await MovieCrawlerJob.runManually();
-    res.status(200).json({
-      status: true,
-      message: 'Crawl job triggered successfully'
-    });
-  } catch (error) {
-    res.status(500).json({
-      status: false,
-      message: 'Failed to trigger crawl job'
-    });
-  }
-});
+// router.post('/crawl', async (req: Request, res: Response) => {
+//   try {
+//     await MovieCrawlerJob.runManually();
+//     res.status(200).json({
+//       status: true,
+//       message: 'Crawl job triggered successfully'
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       status: false,
+//       message: 'Failed to trigger crawl job'
+//     });
+//   }
+// });
 
 export default router;

@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 import express, { Express } from 'express';
 import movieRoutes from './routes/movieRoutes';
-import './cron/movieCrawlerJob';
+// import './cron/movieCrawlerJob';
 import connectDatabase from './config/database';
 
 dotenv.config();
@@ -32,7 +32,7 @@ app.get('/', (req, res) => {
 // Kết nối database trước khi khởi động server
 const startServer = async () => {
   try {
-    await import('./cron/movieCrawlerJob');
+    // await import('./cron/movieCrawlerJob');
     await connectDatabase();
 
     app.listen(port, () => {

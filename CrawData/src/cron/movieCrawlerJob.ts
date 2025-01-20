@@ -4,10 +4,8 @@ import MovieService from '../services/movieService';
 class MovieCrawlerJob {
   // Chạy job vào 0h và 12h hàng ngày
   private readonly schedule = '0 0,12 * * *';
-
   // Biến để theo dõi trạng thái job
   private isRunning = false;
-
   constructor() {
     this.initJob();
   }
@@ -21,9 +19,7 @@ class MovieCrawlerJob {
     try {
       this.isRunning = true;
       console.log('Start crawling movies:', new Date().toISOString());
-
       await MovieService.crawlMovies();
-
       console.log('Finished crawling movies:', new Date().toISOString());
     } catch (error) {
       console.error('Error in crawl job:', error);
