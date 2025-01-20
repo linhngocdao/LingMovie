@@ -38,7 +38,7 @@ http://localhost:3000/api/movies?page=1&limit=24
 
 **Ví dụ:**
 ```
-http://localhost:3000/api/movies/search?search=batman&year=2022&category=action&page=1&limit=24
+http://localhost:3000/api/movies/filter?search=batman&year=2022&category=action&country=country&type=type&page=1&limit=24
 ```
 
 ---

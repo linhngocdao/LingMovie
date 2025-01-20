@@ -1,48 +1,38 @@
 import dotenv from 'dotenv';
 import express, { Express } from 'express';
 import movieRoutes from './routes/movieRoutes';
-// import './cron/movieCrawlerJob';
 import connectDatabase from './config/database';
+import { corsMiddleware } from './middleware/cors';
+import cors from 'cors';
+import morgan from 'morgan';
 
 dotenv.config();
 
 const app: Express = express();
-const port = process.env.PORT || 3000;
 
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
-  next();
-});
 
+//middleware
+app.use(cors());
+app.use(morgan('tiny'));
+app.use(corsMiddleware);
 app.use(express.json());
+
+//routes
 app.use('/api/movies', movieRoutes);
 app.get('/', (req, res) => {
-  res.json({
+  res.status(200).json({
     status: true,
-    message: 'Movie API is running',
-    documentation: '/api/docs',
-    version: '1.0.0'
+    message: 'Success',
   });
 });
 
 
 
-// Kết nối database trước khi khởi động server
-const startServer = async () => {
-  try {
-    // await import('./cron/movieCrawlerJob');
-    await connectDatabase();
+// connect database and start server
+const port = process.env.PORT || 3000;
+app.listen(port, async () => {
+	console.log('\x1b[30;1;42m Info \x1b[0m', 'Local:', `\x1b[96m http://localhost:${port} \x1b[0m `);
+	await connectDatabase();
+});
 
-    app.listen(port, () => {
-      console.log(`⚡️[server]: Server đang chạy tại http://localhost:${port}`);
-    });
-  } catch (error) {
-    console.error('❌ Lỗi khởi động server:', error);
-    process.exit(1);
-  }
-};
-
-startServer();
 export default app;
