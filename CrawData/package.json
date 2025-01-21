@@ -3,12 +3,12 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "build": "npm install && tsc",
+    "vercel-build": "tsc",
     "start": "node dist/index.js",
     "dev": "nodemon src/index.ts",
-    "build": "tsc",
     "lint": "eslint . --ext .ts",
-    "test": "jest",
-    "vercel-build": "npm run build"
+    "test": "jest"
   },
   "keywords": [],
   "author": "Đào Ngọc Linh",
@@ -16,8 +16,8 @@
   "description": "",
   "devDependencies": {
     "@types/cors": "^2.8.17",
-    "@types/express": "^5.0.0",
-    "@types/node": "^22.10.7",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.19",
     "@types/node-cron": "^3.0.11",
     "nodemon": "^3.1.9",
     "ts-node": "^10.9.2",

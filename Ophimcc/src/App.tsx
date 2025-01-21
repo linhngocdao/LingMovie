@@ -1,13 +1,16 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import RouterMain from "./routes"
+import { HelmetProvider } from "react-helmet-async"
 
 function App() {
   const queryClient = new QueryClient()
   return (
     <>
-      <QueryClientProvider client={queryClient}>
-        <RouterMain />
-      </QueryClientProvider>
+      <HelmetProvider>
+        <QueryClientProvider client={queryClient}>
+          <RouterMain />
+        </QueryClientProvider>
+      </HelmetProvider>
     </>
   )
 }

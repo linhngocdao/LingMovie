@@ -1,57 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
 import { Film, Phone, Play, X } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { LazyLoadImage } from 'react-lazy-load-image-component';
 import 'react-lazy-load-image-component/src/effects/blur.css';
 import { getDetail } from '../../../config/ophim';
+import type { MovieDetail, MovieDetailProps } from '../../../ultils/interfaces/movie.interface';
+import SEO from '../../../components/SEO';
 
-interface MovieDetail {
-  movie: {
-    _id: string;
-    name: string;
-    origin_name: string;
-    content: string;
-    type: string;
-    status: string;
-    thumb_url: string;
-    poster_url: string;
-    time: string;
-    episode_current: string;
-    episode_total: string;
-    quality: string;
-    lang: string;
-    year: number;
-    category: Array<{
-      id: string;
-      name: string;
-      slug: string;
-    }>;
-    country: Array<{
-      id: string;
-      name: string;
-      slug: string;
-    }>;
-  };
-  episodes: Array<{
-    server_name: string;
-    server_data: Array<{
-      name: string;
-      slug: string;
-      link_embed: string;
-    }>;
-  }>;
-}
-
-interface MovieDetailProps {
-  slug: string;
-}
-
-const MovieDetail: React.FC<MovieDetailProps> = ({ slug }) => {
+const MovieDetail = ({ slug }: MovieDetailProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentEpisode, setCurrentEpisode] = useState<string | null>(null);
   const [selectedServerIndex, setSelectedServerIndex] = useState(0);
   const [watchedEpisodes, setWatchedEpisodes] = useState<{ [key: string]: boolean }>({});
-
 
   useEffect(() => {
     const loadWatchedEpisodes = () => {
@@ -108,7 +68,13 @@ const MovieDetail: React.FC<MovieDetailProps> = ({ slug }) => {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white pb-6 sm:pb-10">
-      {/* Video Player Modal */}
+      <SEO
+        title={movieData.name}
+        description={movieData.content}
+        keywords={"phim mới, phim hay, phim hd, phim online, phim mới"}
+        image={movieData.thumb_url}
+        type="video.movie"
+      />
       {isPlaying && currentEpisode && (
         <div className="fixed inset-0 bg-black z-50 flex flex-col">
           <div className="flex justify-between items-center p-2 sm:p-4 bg-gray-800">
@@ -133,14 +99,12 @@ const MovieDetail: React.FC<MovieDetailProps> = ({ slug }) => {
       )}
 
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
-        {/* Mobile Title */}
         <div className="sm:hidden mb-4">
           <h1 className="text-xl font-bold text-purple-400">{movieData.name}</h1>
           <h2 className="text-lg text-blue-400 mt-1">{movieData.origin_name}</h2>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8">
-          {/* Poster and Buttons */}
           <div className="sm:col-span-1">
             <div className="relative aspect-[2/3] sm:aspect-auto">
               <LazyLoadImage
@@ -231,8 +195,15 @@ const MovieDetail: React.FC<MovieDetailProps> = ({ slug }) => {
                 </span>
               </div>
             </div>
+            <div>
+              <span className="text-gray-400">Diễn viên:</span>{' '}
+              <span className="text-white">
+                {movieData.actor && movieData.actor.length > 0
+                  ? movieData.actor.join(', ')
+                  : 'Chưa có thông tin'}
+              </span>
+            </div>
 
-            {/* Description */}
             <div className="mt-4 sm:mt-6">
               <h3 className="text-lg sm:text-xl font-semibold mb-2">Nội dung phim</h3>
               <div
@@ -242,12 +213,8 @@ const MovieDetail: React.FC<MovieDetailProps> = ({ slug }) => {
             </div>
           </div>
         </div>
-
-        {/* Episodes */}
         <div className="mt-8">
           <h3 className="text-lg sm:text-xl font-semibold mb-4">Danh sách tập</h3>
-
-          {/* Server Selection */}
           {episodes.length > 1 && (
             <div className="flex flex-wrap gap-2 mb-4">
               {episodes.map((server, index) => (

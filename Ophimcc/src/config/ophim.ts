@@ -6,7 +6,7 @@ interface GetAllParams {
 
 export const getAll = async (params:GetAllParams ) => {
   try {
-    const response = await axiosInstance.get('/danh-sach/phim-moi-cap-nhat', {
+    const response = await axiosInstance.get('/', {
       params,
     });
     return response.data;
@@ -16,8 +16,21 @@ export const getAll = async (params:GetAllParams ) => {
 };
 
 export const getDetail = async (slug: string) => {
+  console.log(slug);
+
   try {
-    const response = await axiosInstance.get(`/phim/${slug}`);
+    const response = await axiosInstance.get(`/detail/${slug}`);
+    return response.data;
+  } catch (error) {
+    return Promise.reject(error);
+  }
+};
+
+export const filterMovies = async (options: any) => {
+  try {
+    const response = await axiosInstance.get('/filter', {
+      params: options,
+    });
     return response.data;
   } catch (error) {
     return Promise.reject(error);

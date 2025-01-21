@@ -8,7 +8,4 @@
     transform: translateY(0);
   }
 }
-
-.animate-slide-down {
-  animation: slide-down 0.2s ease-out;
-}
+.animate-slide-down { animation: slide-down 0.2s ease-out;}

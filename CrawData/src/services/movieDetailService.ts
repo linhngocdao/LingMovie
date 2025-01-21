@@ -1,11 +1,10 @@
-import axios from 'axios';
 import { MovieModel } from '../models/Movie';
 import { MovieDetailModel } from '../models/MovieDetail';
+import axios from 'axios';
+import { delay, retry } from '../utils/common';
 
-const baseURL = 'https://ophim1.com';
+const baseURL = process.env.API_URL || 'https://ophim1.com';
 let isProcessing = false;
-
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const processMovieDetails = async (): Promise<void> => {
   if (isProcessing) {
@@ -16,12 +15,12 @@ export const processMovieDetails = async (): Promise<void> => {
   try {
     isProcessing = true;
 
-    // Lấy danh sách phim chưa có chi tiết
     const movies = await MovieModel.find({
       slug: {
         $nin: await MovieDetailModel.distinct('movie.slug')
       }
     }).select('_id slug').lean();
+
 
     console.log(`🔍 Tìm thấy ${movies.length} phim cần cập nhật chi tiết`);
 
@@ -30,53 +29,69 @@ export const processMovieDetails = async (): Promise<void> => {
 
     for (const movie of movies) {
       try {
-        // Kiểm tra lại xem phim đã được xử lý chưa
-        const existingDetail = await MovieDetailModel.findOne({ 'movie.slug': movie.slug });
-        if (existingDetail) {
-          console.log(`⏩ Bỏ qua phim ${movie.slug}: Đã tồn tại trong DB`);
-          continue;
-        }
-
-        // Gọi API với retry mechanism
-        const maxRetries = 3;
-        let retryCount = 0;
-        let response;
-
-        while (retryCount < maxRetries) {
-          try {
-            response = await axios.get(`${baseURL}/phim/${movie.slug}`, {
-              timeout: 5000
-            });
-            break;
-          } catch (error) {
-            retryCount++;
-            if (retryCount === maxRetries) throw error;
-            await delay(1000 * retryCount);
-            console.log(`🔄 Thử lại lần ${retryCount} cho phim: ${movie.slug}`);
-          }
-        }
-
-        if (!response?.data?.movie || !response?.data?.episodes) {
-          console.log(`⚠️ Bỏ qua phim ${movie.slug}: Dữ liệu không hợp lệ`);
+        const slugValue = Array.isArray(movie.slug) ? movie.slug[0] : movie.slug;
+        if (!slugValue) {
+          console.error(`⚠️ Bỏ qua phim với ID ${movie._id}: Slug không hợp lệ`);
           errorCount++;
           continue;
         }
 
+        const existingDetail = await MovieDetailModel.findOne({
+          'movie.slug': slugValue
+        });
+
+        if (existingDetail) {
+          console.log(`⏩ Bỏ qua phim ${slugValue}: Đã tồn tại trong DB`);
+          continue;
+        }
+
+        // Sử dụng hàm retry để xử lý việc gọi API
+        const response = await retry(
+          async () => {
+            const requestUrl = `${baseURL}/phim/${slugValue}`;
+            console.log(`🌐 Đang gọi API với URL: ${requestUrl}`);
+
+            const res = await axios.get(requestUrl, {
+              timeout: 5000
+            });
+            if (!res?.data?.movie || !res?.data?.episodes) {
+              throw new Error('Dữ liệu API không hợp lệ');
+            }
+
+            // Xử lý slug cho server_data
+            res.data.episodes.forEach((episode: any) => {
+              episode.server_data = episode.server_data.map((data: any) => ({
+                ...data,
+                slug: data.name.toLowerCase().replace(/\s+/g, '-') // Tạo slug từ name
+              }));
+            });
+
+            return res;
+          },
+          3,
+          1000
+        );
+
+
+
+        const movieData = {
+          ...response.data.movie,
+          slug: slugValue // Đảm bảo lưu giá trị slug đã được xử lý
+        };
+
         // Lưu vào database
         await MovieDetailModel.create({
-          movie_id: movie._id,
-          movie: response.data.movie,
+          movie: movieData,
           episodes: response.data.episodes
         });
 
         successCount++;
-        console.log(`✅ Đã lưu chi tiết phim: ${movie.slug}`);
+        console.log(`✅ Đã lưu chi tiết phim: ${slugValue}`);
 
-        // Delay để tránh quá tải API
         await delay(1000);
       } catch (error) {
         errorCount++;
-        console.error(`❌ Lỗi khi xử lý phim ${movie.slug}:`, error);
+        console.error(`❌ Lỗi khi xử lý phim ${movie._id}:`, error);
         continue;
       }
     }

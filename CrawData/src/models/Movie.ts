@@ -54,14 +54,16 @@ export interface IMovie extends Document {
 const MovieSchema = new Schema<IMovie>(
   {
     name: { type: String, required: true },
-    slug: { type: String, required: true, unique: true, index: true },
+    // Bỏ index: true ở đây
+    slug: { type: String, required: true },
     origin_name: { type: String, required: true },
     content: String,
     type: { type: String, required: true },
     status: { type: String, required: true },
     thumb_url: { type: String, required: true },
     poster_url: { type: String, required: true },
-    year: { type: Number, required: true, index: true },
+    // Bỏ index: true ở đây
+    year: { type: Number, required: true },
     tmdb: {
       type: { type: String },
       id: String,
@@ -94,6 +96,17 @@ const MovieSchema = new Schema<IMovie>(
   }
 );
 
-MovieSchema.index({ name: 'text', origin_name: 'text' });
+// Định nghĩa tất cả index một lần duy nhất
+MovieSchema.index({ slug: 1 }, { unique: true });
+MovieSchema.index({ year: 1 });
+MovieSchema.index({ type: 1 });
+MovieSchema.index({ 'category.slug': 1 });
+MovieSchema.index({ 'country.slug': 1 });
+MovieSchema.index({ createdAt: -1 });
+MovieSchema.index(
+  { name: 'text', origin_name: 'text' },
+  { weights: { name: 2, origin_name: 1 } }
+);
+
 
 export const MovieModel = mongoose.model<IMovie>('Movie', MovieSchema);

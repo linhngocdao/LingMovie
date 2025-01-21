@@ -258,12 +258,12 @@ export const crawlMovies = async (): Promise<void> => {
 };
 
 // Thêm index cho các trường thường xuyên tìm kiếm
-MovieModel.schema.index({ year: 1 });
-MovieModel.schema.index({ type: 1 });
-MovieModel.schema.index({ 'category.slug': 1 });
-MovieModel.schema.index({ 'country.slug': 1 });
-MovieModel.schema.index({ createdAt: -1 });
-MovieModel.schema.index(
-  { name: 'text', origin_name: 'text' },
-  { weights: { name: 2, origin_name: 1 } }
-);
+// MovieModel.schema.index({ year: 1 });
+// MovieModel.schema.index({ type: 1 });
+// MovieModel.schema.index({ 'category.slug': 1 });
+// MovieModel.schema.index({ 'country.slug': 1 });
+// MovieModel.schema.index({ createdAt: -1 });
+// MovieModel.schema.index(
+//   { name: 'text', origin_name: 'text' },
+//   { weights: { name: 2, origin_name: 1 } }
+// );

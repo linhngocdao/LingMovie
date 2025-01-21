@@ -24,6 +24,7 @@ interface MovieResponse {
   items?: any[];
   message?: string;
   movie?: any;
+  pathImage?: string;
 }
 
 const createPaginatedResponse = (data: any[], total: number, page: number, limit: number): MovieResponse => ({
@@ -31,7 +32,8 @@ const createPaginatedResponse = (data: any[], total: number, page: number, limit
   total,
   page,
   limit,
-  items: data
+  items: data,
+  pathImage: "https://img.ophim.live/uploads/movies/"
 });
 
 const handleError = (error: any): MovieResponse => {
