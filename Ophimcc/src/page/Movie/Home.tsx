@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Moon, ChevronLeft, ChevronRight, Menu, Search } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { LazyLoadImage } from 'react-lazy-load-image-component';
 import 'react-lazy-load-image-component/src/effects/blur.css';
-import { getAll } from '../../config/ophim';
+import { filterMovies, getAll } from '../../config/ophim';
 import MovieDetail from './movieDetail/MovieDetail';
 import './style/Home.css';
+import { Link } from 'react-router-dom';
 
 interface Movie {
   _id: string;
@@ -16,9 +17,7 @@ interface Movie {
   modified: {
     time: string;
   };
-  tmdb: {
-    vote_average: number;
-  };
+  tmdb?: any
   slug: string;
 }
 
@@ -54,6 +53,27 @@ const MovieList = () => {
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchVisible, setIsSearchVisible] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  const getRating = (movie: Movie) => {
+    return (movie.tmdb && 'vote_average' in movie.tmdb) ? movie.tmdb.vote_average.toFixed(1) : 'N/A';
+  };
+  const getModifiedDate = (movie: Movie) => {
+    try {
+      return movie.modified?.time ? new Date(movie.modified.time).toLocaleDateString() : 'N/A';
+    } catch {
+      return 'N/A';
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const toggleSearch = () => {
     setIsSearchVisible(!isSearchVisible);
@@ -61,9 +81,21 @@ const MovieList = () => {
   };
 
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['getAllMovie', currentPage],
-    queryFn: () => getAll({ page: currentPage }),
+    queryKey: ['movies', currentPage, debouncedSearch],
+    queryFn: () => {
+      if (debouncedSearch) {
+        return filterMovies({ search: debouncedSearch, page: currentPage });
+      }
+      return getAll({ page: currentPage });
+    },
   });
+  console.log("duong", data);
+
+  const handleSearch = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(event.target.value);
+    setCurrentPage(1); // Reset về trang 1 khi tìm kiếm
+  };
+
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -158,10 +190,14 @@ const MovieList = () => {
         <div className="container mx-auto px-3 sm:px-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2 sm:space-x-4">
-              <h1 className="text-lg sm:text-2xl font-bold text-orange-500 whitespace-nowrap">Cheng iu dấu</h1>
+              <Link to="/">
+                <h1 className="text-lg sm:text-2xl font-bold text-orange-500 whitespace-nowrap">Cheng iu dấu</h1>
+              </Link>
               <div className="relative hidden sm:block">
                 <input
                   type="text"
+                  value={searchTerm}
+                  onChange={handleSearch}
                   placeholder="Tìm kiếm phim..."
                   className="bg-gray-700 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg w-48 sm:w-64 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
@@ -205,6 +241,8 @@ const MovieList = () => {
             <div className="sm:hidden mt-3 animate-slide-down">
               <input
                 type="text"
+                value={searchTerm}
+                onChange={handleSearch}
                 placeholder="Tìm kiếm phim..."
                 className="bg-gray-700 text-white px-3 py-1.5 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                 autoFocus
@@ -247,100 +285,122 @@ const MovieList = () => {
           </div>
         ) : data ? (
           <>
-            {/* Grid view for mobile */}
-            <div className="grid grid-cols-2 sm:hidden gap-3">
-              {data.items.map((movie: Movie) => (
-                <div
-                  key={movie._id}
-                  className="bg-gray-800 rounded-lg overflow-hidden cursor-pointer"
-                  onClick={() => handleMovieClick(movie.slug)}
-                >
-                  <div className="relative aspect-[2/3]">
-                    <ImageWithFallback
-                      src={`${data.pathImage}${movie.thumb_url}`}
-                      alt={movie.name}
-                      className="w-full h-full object-cover"
-                      wrapperClassName="w-full h-full"
-                      placeholder={
-                        <div className="w-full h-full bg-gray-700 animate-pulse" />
-                      }
-                    />
-                  </div>
-                  <div className="p-2">
-                    <h3 className="text-purple-400 text-sm font-medium line-clamp-2">
-                      {movie.name}
-                    </h3>
-                    <p className="text-xs text-gray-400 mt-1">{movie.year}</p>
-                    <div className="flex items-center mt-1">
-                      <span className="text-yellow-400 text-xs">★</span>
-                      <span className="ml-1 text-xs">{movie.tmdb.vote_average.toFixed(1)}</span>
-                    </div>
-                  </div>
+            {data?.items.length === 0 ? (
+              <div className="flex justify-center items-center h-64">
+                <div className="text-gray-400">
+                  Không tìm thấy phim phù hợp với từ khóa "{searchTerm}"
                 </div>
-              ))}
-            </div>
-
-            {/* Table view for desktop */}
-            <div className="hidden sm:block overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="text-left border-b border-gray-700">
-                    <th className="py-4 px-2 font-medium">TÊN</th>
-                    <th className="py-4 px-2 font-medium">NĂM</th>
-                    <th className="py-4 px-2 font-medium">ĐÁNH GIÁ</th>
-                    <th className="py-4 px-2 font-medium">NGÀY CẬP NHẬT</th>
-                  </tr>
-                </thead>
-                <tbody>
+              </div>
+            ) : (
+              <>
+                {/* Grid view for mobile */}
+                <div className="grid grid-cols-2 sm:hidden gap-3">
                   {data.items.map((movie: Movie) => (
-                    <tr
+                    <div
                       key={movie._id}
-                      className="border-b border-gray-700 hover:bg-gray-800 cursor-pointer"
+                      className="bg-gray-800 rounded-lg overflow-hidden cursor-pointer"
                       onClick={() => handleMovieClick(movie.slug)}
                     >
-                      <td className="py-4 px-2">
-                        <div className="flex items-center space-x-4">
-                          <div className="w-16 h-20 relative">
-                            <ImageWithFallback
-                              src={`${data.pathImage}${movie.thumb_url}`}
-                              alt={movie.name}
-                              className="rounded object-cover w-full h-full"
-                              wrapperClassName="w-full h-full"
-                              placeholder={
-                                <div className="w-full h-full bg-gray-700 animate-pulse rounded" />
-                              }
-                            />
-                          </div>
-                          <div>
-                            <h3 className="text-purple-400 hover:text-purple-300">
-                              {movie.name}
-                            </h3>
-                            <p className="text-sm text-gray-400">{movie.origin_name}</p>
-                          </div>
+                      <div className="relative aspect-[2/3]">
+                        <ImageWithFallback
+                          src={`${data.pathImage}${movie.thumb_url}`}
+                          alt={movie.name}
+                          className="w-full h-full object-cover"
+                          wrapperClassName="w-full h-full"
+                          placeholder={
+                            <div className="w-full h-full bg-gray-700 animate-pulse" />
+                          }
+                        />
+                      </div>
+                      <div className="p-2">
+                        <h3 className="text-purple-400 text-sm font-medium line-clamp-2">
+                          {movie.name}
+                        </h3>
+                        <p className="text-xs text-gray-400 mt-1">{movie.year}</p>
+                        <div className="flex items-center mt-1">
+                          <span className="text-yellow-400 text-xs">★</span>
+                          <span className="ml-1 text-xs">
+                            {getRating(movie)}
+                          </span>
                         </div>
-                      </td>
-                      <td className="py-4 px-2">{movie.year}</td>
-                      <td className="py-4 px-2">
-                        <div className="flex items-center">
-                          <span className="text-yellow-400">★</span>
-                          <span className="ml-1">{movie.tmdb.vote_average.toFixed(1)}</span>
-                        </div>
-                      </td>
-                      <td className="py-4 px-2 text-gray-400">
-                        {new Date(movie.modified.time).toLocaleDateString()}
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </div>
 
-            {data.pagination && (
-              <PaginationControls pagination={data.pagination} />
+                {/* Table view for desktop */}
+                <div className="hidden sm:block overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="text-left border-b border-gray-700">
+                        <th className="py-4 px-2 font-medium">TÊN</th>
+                        <th className="py-4 px-2 font-medium">NĂM</th>
+                        <th className="py-4 px-2 font-medium">ĐÁNH GIÁ</th>
+                        <th className="py-4 px-2 font-medium">NGÀY CẬP NHẬT</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.items.map((movie: Movie) => (
+                        <tr
+                          key={movie._id}
+                          className="border-b border-gray-700 hover:bg-gray-800 cursor-pointer"
+                          onClick={() => handleMovieClick(movie.slug)}
+                        >
+                          <td className="py-4 px-2">
+                            <div className="flex items-center space-x-4">
+                              <div className="w-16 h-20 relative">
+                                <ImageWithFallback
+                                  src={`${data.pathImage}${movie.thumb_url}`}
+                                  alt={movie.name}
+                                  className="rounded object-cover w-full h-full"
+                                  wrapperClassName="w-full h-full"
+                                  placeholder={
+                                    <div className="w-full h-full bg-gray-700 animate-pulse rounded" />
+                                  }
+                                />
+                              </div>
+                              <div>
+                                <h3 className="text-purple-400 hover:text-purple-300">
+                                  {movie.name}
+                                </h3>
+                                <p className="text-sm text-gray-400">{movie.origin_name}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-4 px-2">{movie.year}</td>
+                          <td className="py-4 px-2">
+                            <div className="flex items-center">
+                              <span className="text-yellow-400">★</span>
+                              <span className="ml-1">{getRating(movie)}</span>
+                            </div>
+                          </td>
+                          <td className="py-4 px-2 text-gray-400">
+                            {getModifiedDate(movie)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {data.pagination && (
+                  <PaginationControls pagination={data.pagination} />
+                )}
+              </>
             )}
           </>
         ) : null}
       </main>
+      {data && (
+        <PaginationControls
+          pagination={{
+            currentPage: data.page || 1,
+            totalPages: Math.ceil(data.total / data.limit) || 1,
+            totalItems: data.total || 0,
+            totalItemsPerPage: data.limit || 24
+          }}
+        />
+      )}
     </div>
   );
 };

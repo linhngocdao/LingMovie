@@ -2,7 +2,7 @@ import axios, { AxiosInstance } from "axios";
 
 const axiosInstance: AxiosInstance = axios.create({
   timeout: 3 * 60 * 1000,
-  baseURL: "https://ophim1.com",
+  baseURL: "http://localhost:3000/api/movies",
 });
 
 export default axiosInstance;
