@@ -187,13 +187,18 @@ export const getMovieDetail = async (slug: string): Promise<any> => {
 // Lưu movies vào DB
 const saveMoviesToDB = async (movies: any[]): Promise<void> => {
   try {
-    const operations = movies.map(movie => ({
-      updateOne: {
-        filter: { slug: movie.slug },
-        update: { $set: movie },
-        upsert: true
-      }
-    }));
+    const operations = movies.map(movie => {
+      // Tạo bản sao của movie và loại bỏ _id
+      const { _id, ...movieWithoutId } = movie;
+
+      return {
+        updateOne: {
+          filter: { slug: movie.slug },
+          update: { $set: movieWithoutId },
+          upsert: true
+        }
+      };
+    });
 
     await MovieModel.bulkWrite(operations);
     console.log(`✅ Đã lưu ${movies.length} phim vào database`);
@@ -256,14 +261,3 @@ export const crawlMovies = async (): Promise<void> => {
     isCrawling = false;
   }
 };
-
-// Thêm index cho các trường thường xuyên tìm kiếm
-// MovieModel.schema.index({ year: 1 });
-// MovieModel.schema.index({ type: 1 });
-// MovieModel.schema.index({ 'category.slug': 1 });
-// MovieModel.schema.index({ 'country.slug': 1 });
-// MovieModel.schema.index({ createdAt: -1 });
-// MovieModel.schema.index(
-//   { name: 'text', origin_name: 'text' },
-//   { weights: { name: 2, origin_name: 1 } }
-// );

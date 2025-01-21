@@ -29,6 +29,7 @@ interface Country {
 }
 
 export interface IMovie extends Document {
+  _id: string;
   name: string;
   slug: string;
   origin_name: string;
@@ -54,15 +55,18 @@ export interface IMovie extends Document {
 const MovieSchema = new Schema<IMovie>(
   {
     name: { type: String, required: true },
-    // Bỏ index: true ở đây
-    slug: { type: String, required: true },
+    slug: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true
+    },
     origin_name: { type: String, required: true },
     content: String,
     type: { type: String, required: true },
     status: { type: String, required: true },
     thumb_url: { type: String, required: true },
     poster_url: { type: String, required: true },
-    // Bỏ index: true ở đây
     year: { type: Number, required: true },
     tmdb: {
       type: { type: String },
@@ -92,21 +96,30 @@ const MovieSchema = new Schema<IMovie>(
   },
   {
     timestamps: true,
-    versionKey: false
+    versionKey: false,
+    strict: true
   }
 );
 
-// Định nghĩa tất cả index một lần duy nhất
-MovieSchema.index({ slug: 1 }, { unique: true });
-MovieSchema.index({ year: 1 });
-MovieSchema.index({ type: 1 });
-MovieSchema.index({ 'category.slug': 1 });
-MovieSchema.index({ 'country.slug': 1 });
-MovieSchema.index({ createdAt: -1 });
+MovieSchema.index({ slug: 1 }, { unique: true, background: true });
+MovieSchema.index({ year: 1 }, { background: true });
+MovieSchema.index({ type: 1 }, { background: true });
+MovieSchema.index({ 'category.slug': 1 }, { background: true });
+MovieSchema.index({ 'country.slug': 1 }, { background: true });
+MovieSchema.index({ createdAt: -1 }, { background: true });
 MovieSchema.index(
   { name: 'text', origin_name: 'text' },
-  { weights: { name: 2, origin_name: 1 } }
+  {
+    weights: { name: 2, origin_name: 1 },
+    background: true
+  }
 );
 
+MovieSchema.pre('save', function(next) {
+  if (this.slug) {
+    this.slug = this.slug.toLowerCase().trim();
+  }
+  next();
+});
 
 export const MovieModel = mongoose.model<IMovie>('Movie', MovieSchema);
