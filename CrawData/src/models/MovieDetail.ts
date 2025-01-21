@@ -111,7 +111,7 @@ const MovieDetailSchema = new Schema<IMovieDetail>(
       lang: { type: String },
       notify: { type: String },
       showtimes: { type: String },
-      slug: { type: String, required: true, unique: true },
+      slug: { type: String, required: true },
       year: { type: Number, required: true },
       view: { type: Number, default: 0 },
       actor: [String],
@@ -132,13 +132,13 @@ const MovieDetailSchema = new Schema<IMovieDetail>(
       sub_docquyen: { type: Boolean, default: false }
     },
     episodes: [{
-      server_name: { type: String, required: true },
+      server_name: { type: String },
       server_data: [{
-        name: { type: String, required: true },
-        slug: { type: String, required: true },
-        filename: { type: String },
-        link_embed: { type: String, required: true },
-        link_m3u8: { type: String, required: true }
+        name: { type: String },
+        slug: { type: String },
+        filename: { type: String, default: '' },
+        link_embed: { type: String },
+        link_m3u8: { type: String }
       }]
     }]
   },
@@ -148,7 +148,7 @@ const MovieDetailSchema = new Schema<IMovieDetail>(
   }
 );
 
-// Index để tìm kiếm nhanh
+// Định nghĩa index một lần duy nhất
 MovieDetailSchema.index({ 'movie.slug': 1 }, { unique: true });
 MovieDetailSchema.index({ 'movie.name': 'text', 'movie.origin_name': 'text' });
 

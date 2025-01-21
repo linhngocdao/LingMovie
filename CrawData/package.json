@@ -3,12 +3,12 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "build": "tsc",
+    "vercel-build": "npm run build",
     "start": "node dist/index.js",
     "dev": "nodemon src/index.ts",
-    "build": "tsc",
     "lint": "eslint . --ext .ts",
-    "test": "jest",
-    "vercel-build": "npm run build"
+    "test": "jest"
   },
   "keywords": [],
   "author": "Đào Ngọc Linh",
